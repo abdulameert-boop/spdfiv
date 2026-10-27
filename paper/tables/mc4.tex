@@ -1,0 +1,14 @@
+\begin{tabular}{llrrrrrrrrrr}
+\toprule
+ & & & \multicolumn{3}{c}{$\psi_0$} & \multicolumn{3}{c}{$\rho_1$} & \multicolumn{3}{c}{$\beta_1$} \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-9}\cmidrule(lr){10-12}
+Design & Estimator & $NT$ & Bias & RMSE & Size & Bias & RMSE & Size & Bias & RMSE & Size \\
+\midrule
+Staggered & Unbalanced, all units & 9149 & 0.001 & 0.015 & 6.6 & 0.001 & 0.009 & 8.1 & 0.003 & 0.013 & 8.6 \\
+ & Drop late units & 6930 & $-$0.070 & 0.073 & 97.6 & 0.003 & 0.012 & 10.0 & 0.004 & 0.016 & 9.5 \\
+ & Common period & 5112 & 0.002 & 0.023 & 7.9 & $-$0.002 & 0.013 & 8.9 & 0.002 & 0.018 & 8.2 \\
+\addlinespace
+Sporadic & Unbalanced, all units & 9507 & $-$0.003 & 0.016 & 7.4 & 0.000 & 0.009 & 9.3 & 0.001 & 0.012 & 7.5 \\
+ & Complete units only & 1307 & $-$0.222 & 0.231 & 97.1 & 0.009 & 0.037 & 25.2 & 0.019 & 0.055 & 26.8 \\
+\bottomrule
+\end{tabular}

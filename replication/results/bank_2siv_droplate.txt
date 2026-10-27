@@ -1,0 +1,24 @@
+Defactored instrumental variables estimation
+Number of obs               =       8575   Number of units     =      245
+Number of instruments       =         28   Obs per unit (min/avg/max)= 35/35.0/35
+Factors in instruments      =        2/2   Factors in u        =        1
+Second-stage estimator (model with homogeneous slope coefficients)
+------------------------------------------------------------------------------
+                     Coef.   Std. err.        z   P>|z|     [95% conf. interval]
+------------------------------------------------------------------------------
+         W.NPL    0.366506    0.104699     3.50   0.000    0.161300    0.571712
+        L1.NPL    0.243393    0.058467     4.16   0.000    0.128800    0.357986
+         INEFF    0.456147    0.116838     3.90   0.000    0.227148    0.685145
+           CAR    0.030262    0.006186     4.89   0.000    0.018137    0.042387
+          SIZE    0.330181    0.123976     2.66   0.008    0.087191    0.573170
+        BUFFER   -0.054712    0.013257    -4.13   0.000   -0.080696   -0.028728
+        PROFIT   -0.005882    0.001945    -3.02   0.002   -0.009693   -0.002071
+       QUALITY    0.181949    0.029373     6.19   0.000    0.124379    0.239520
+     LIQUIDITY    2.468228    0.325111     7.59   0.000    1.831022    3.105434
+------------------------------------------------------------------------------
+       sigma_f    0.727829  (std. dev. of factor error component)
+       sigma_e    0.972142  (std. dev. of idiosyncratic error component)
+           rho    0.359192  (fraction of variance due to factors)
+------------------------------------------------------------------------------
+Hansen test of the overidentifying restrictions  chi2(19) =   15.6663
+H0: overidentifying restrictions are valid        Prob > chi2 =    0.6794

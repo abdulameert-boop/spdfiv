@@ -1,0 +1,658 @@
+\documentclass[article]{jss}
+
+%% -- LaTeX packages and custom commands ---------------------------------------
+\usepackage{orcidlink,thumbpdf}
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
+\usepackage{amsmath,bm,booktabs}
+
+\newcommand{\class}[1]{`\code{#1}'}
+\newcommand{\fct}[1]{\code{#1()}}
+%% placeholders for the author -- remove before submission
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[#1]}}}
+
+%% -- Article metainformation --------------------------------------------------
+\author{Abdul Amir Taima Bandar~\orcidlink{0009-0007-1118-1993}\\University of Kerbala
+   \And Ahmed Turki Abd Ali~\orcidlink{0009-0007-5402-8948}\\University of Kerbala}
+\Plainauthor{Abdul Amir Taima Bandar, Ahmed Turki Abd Ali}
+
+\title{\pkg{spdfiv}: Defactored Instrumental Variables Estimation and Heterogeneity Diagnostics for Spatial Dynamic Panels with Interactive Effects in \proglang{Python}}
+\Plaintitle{spdfiv: Defactored Instrumental Variables Estimation and Heterogeneity Diagnostics for Spatial Dynamic Panels with Interactive Effects in Python}
+\Shorttitle{\pkg{spdfiv}: Spatial Dynamic Panels with Interactive Effects in \proglang{Python}}
+
+\Abstract{
+Spatial dynamic panel data models with unobserved common factors can be
+estimated by the two-stage instrumental variables (2SIV) estimator of Cui,
+Sarafidis, and Yamagata (2023) and, with heterogeneous slopes, by the
+mean-group IV estimator of Chen, Cui, Sarafidis, and Yamagata (2025). This
+article introduces \pkg{spdfiv}, an open-source \proglang{Python}
+implementation of both estimators, to our knowledge the first outside
+\proglang{Stata}. The package reproduces the published
+\proglang{Stata} results of Kripfganz and Sarafidis (2025) in every printed
+digit; the comparison uncovered five implementation details that are not
+visible from the published equations, which we document. The package also
+matches the weights matrix to the panel by unit label, computes impacts
+exactly through a Schur decomposition with Delta-method or simulation
+inference, provides diagnostics that show which units drive a mean-group
+estimate, and offers an experimental treatment of unbalanced panels. Monte
+Carlo experiments document each feature. Applied to the bank data of
+Kripfganz and Sarafidis (2025), the diagnostics show that extreme bank-level
+estimates explain most of the gap between the mean-group and pooled
+estimates of some slopes, but not the disappearance of the spatial
+spillover.
+}
+
+\Keywords{panel data, spatial econometrics, interactive effects, common factors, instrumental variables, mean-group estimation, outliers, \proglang{Python}}
+\Plainkeywords{panel data, spatial econometrics, interactive effects, common factors, instrumental variables, mean-group estimation, outliers, Python}
+
+\Address{
+  Abdul Amir Taima Bandar (corresponding author), Ahmed Turki Abd Ali\\
+  Department of Statistics\\
+  College of Administration and Economics\\
+  University of Kerbala\\
+  Karbala 56001, Iraq\\
+  E-mail: \email{Abdulameer.t@uokerbala.edu.iq}, \email{Ahmed.turki@uokerbala.edu.iq}
+}
+
+\begin{document}
+
+%% ============================================================================
+\section{Introduction} \label{sec:intro}
+%% ============================================================================
+
+Panel data that follow many units over many periods allow researchers to
+separate three sources of dependence that are confounded in a single cross
+section or time series: state dependence, captured by lags of the outcome;
+spatial or network interactions, captured by spatially weighted averages of
+the outcomes of other units; and common shocks, such as business cycles,
+financial crises, or regulatory changes, that hit all units with
+heterogeneous intensities. The last source is commonly modelled by a factor
+structure $\bm\gamma_i^\top\bm f_t$, also known as interactive effects
+\citep{Pesaran:2006,Bai:2003}.
+
+Combining all three features is demanding. Quasi-maximum likelihood
+estimators \citep{Yu+DeJong+Lee:2008,Shi+Lee:2017,Bai+Li:2021} are
+non-linear, require bias correction for incidental parameters, and do not
+accommodate covariates that are endogenous with respect to the idiosyncratic
+error. \citet{Cui+Sarafidis+Yamagata:2023} proposed a two-stage
+instrumental variables (2SIV) estimator that avoids all three problems: it
+is linear in the parameters, free from asymptotic bias, and allows external
+instruments. \citet{Chen+Cui+Sarafidis:2025} extended the approach to
+heterogeneous slopes with a mean-group IV (MGIV) estimator.
+\citet{Kripfganz+Sarafidis:2025} implemented both estimators in the
+\proglang{Stata} command \code{spxtivdfreg} and noted that the approach had
+not been implemented in any other statistical software.
+
+This article introduces \pkg{spdfiv}, a \proglang{Python} \citep{Python} package
+that fills this gap. Its dependencies are limited to \pkg{NumPy}
+\citep{Harris+Millman+vanderWalt:2020}, \pkg{SciPy}
+\citep{Virtanen+Gommers+Oliphant:2020}, and \pkg{pandas}
+\citep{McKinney:2010}, so it is available to every user of the scientific
+\proglang{Python} stack at no cost. Spatial econometric software in
+\proglang{Python}, notably the \pkg{spreg} package of the \pkg{PySAL}
+ecosystem \citep{Rey+Anselin:2010,Rey+Anselin+Amaral:2022}, does not
+provide estimators with interactive effects; neither do \pkg{splm}
+\citep{Millo+Piras:2012} in \proglang{R} or \pkg{xsmle}
+\citep{Belotti+Hughes+Mortari:2017} in \proglang{Stata}.
+
+A translation of an existing command would be of limited interest on its
+own. The package therefore also addresses four limitations that
+\citet{Kripfganz+Sarafidis:2025} acknowledge in their own discussion.
+
+\begin{enumerate}
+\item \emph{Alignment of the spatial weights matrix.} \code{spxtivdfreg}
+  does not check that the rows of the weights matrix are ordered like the
+  units in the data, leaving this to the user. \pkg{spdfiv} matches the
+  matrix to the panel by unit label and refuses unlabelled input unless the
+  user explicitly accepts positional matching.
+\item \emph{Inference on impacts.} Standard errors of direct, indirect, and
+  total impacts are available only through the Delta method. Long-run
+  multipliers such as $\beta/(1-\rho-\psi)$ are highly non-linear when the
+  process is persistent. \pkg{spdfiv} adds Krinsky--Robb simulation
+  \citep{Krinsky+Robb:1986}, the approach of \citet{LeSage+Pace:2009}, and
+  computes impacts through a Schur decomposition that remains exact when the
+  weights matrix is not diagonalizable.
+\item \emph{Outliers in mean-group estimation.} In the application of
+  \citet{Kripfganz+Sarafidis:2025}, the MG estimates differ from the pooled
+  ones by an order of magnitude for some coefficients, and the authors
+  conjecture that a few outlying units are responsible, leaving the question
+  for future work. \pkg{spdfiv} provides tools to answer it: influence
+  statistics for each unit, outlier flags, and robust summaries of the
+  distribution of unit-specific estimates with bootstrap inference.
+\item \emph{Unbalanced panels.} \code{spxtivdfreg} requires a balanced
+  panel. \pkg{spdfiv} accepts panels with staggered entry or sporadic gaps
+  through an explicit, experimental option, documented together with its
+  limitations and with simulation evidence of its performance.
+\end{enumerate}
+
+The package is validated in three ways. A test suite re-implements the 2SIV
+estimator literally from its defining equations and checks that the package
+reproduces estimates, variance matrix, and $J$ statistic to machine
+precision; Monte Carlo experiments document finite-sample performance; and,
+on the bank data of \citet{Kripfganz+Sarafidis:2025}, the package
+reproduces their published 2SIV and mean-group estimates, standard errors,
+$J$ statistic, and long-run impacts in every printed digit. This
+cross-software check uncovered five implementation details of
+\code{spxtivdfreg} that are not visible from the equations of the article
+but change the results substantially; they are the
+defaults of \pkg{spdfiv} and are documented in Section~\ref{sec:application}.
+
+Section~\ref{sec:models} reviews the estimators and describes the
+extensions. Section~\ref{sec:package} presents the package,
+Section~\ref{sec:illustration} illustrates its use,
+Section~\ref{sec:mc} reports Monte Carlo evidence,
+Section~\ref{sec:application} applies the package to the bank data,
+Section~\ref{sec:timing} reports computing times, and
+Section~\ref{sec:summary} concludes.
+
+%% ============================================================================
+\section{Models and methods} \label{sec:models}
+%% ============================================================================
+
+\subsection{Model}
+
+For units $i=1,\dots,N$ and periods $t=1,\dots,T$, consider
+\begin{equation}
+y_{it} = \sum_{\tau=0}^{S_\psi}\psi_\tau\sum_{j=1}^N w_{ij}y_{j,t-\tau}
+       + \sum_{\tau=1}^{S_\rho}\rho_\tau y_{i,t-\tau}
+       + \bm x_{it}^\top\bm\beta + \sum_{j=1}^N w_{ij}\bm x_{jt}^\top\bm\delta
+       + \alpha_i + \bm\gamma_{i}^\top\bm f_{t} + \varepsilon_{it},
+\label{eq:model}
+\end{equation}
+where $w_{ij}$ are the elements of a known $N\times N$ spatial weights
+matrix $\bm W$ with zero diagonal, $\alpha_i$ are unit effects, $\bm f_t$
+are $r_y$ unobserved factors with loadings $\bm\gamma_i$, and
+$\varepsilon_{it}$ is an idiosyncratic error. The covariates follow
+\begin{equation}
+\bm x_{it} = \bm\Gamma_{i}^\top \bm f_{x,t} + \bm v_{it},
+\label{eq:xdgp}
+\end{equation}
+so that they are correlated with the factor component of the error. This
+is model~(23) of \citet{Kripfganz+Sarafidis:2025}; with $S_\psi=0$,
+$S_\rho=1$ and $\bm\delta=\bm 0$ it reduces to the model of
+\citet{Cui+Sarafidis+Yamagata:2023}. Stacking the $T$ observations of unit
+$i$ gives $\bm y_i = \bm C_i\bm\theta + \bm u_i$, where $\bm C_i$ collects
+the regressors and $\bm u_i = \bm F\bm\gamma_i + \bm\varepsilon_i$.
+
+\subsection{Two-stage IV estimation}
+
+Let $\hat{\bm F}_{x,-\tau}$ be $\sqrt{T}$ times the eigenvectors of the
+$r_x$ largest eigenvalues of $(NT)^{-1}\sum_i \bm X_{i,-\tau}\bm X_{i,-\tau}^\top$,
+where $\bm X_{i,-\tau}$ holds the instrumenting covariates lagged $\tau$
+periods, and let $\bm M_{\hat F_{x,-\tau}}$ be the projection that removes
+them. The instrument matrix is
+\begin{equation}
+\hat{\bm Z}_i = \left(\bm M_{\hat F_{x,-\tau}}\bm X_{i,-\tau},\;
+  \textstyle\sum_j w_{ij}\bm M_{\hat F_{x,-\tau}}\bm X_{j,-\tau}\right)_{\tau=0,\dots,L}.
+\label{eq:Z}
+\end{equation}
+The first-stage estimator is the IV estimator
+$\hat{\bm\theta} = (\hat{\bm A}^\top\hat{\bm B}^{-1}\hat{\bm A})^{-1}\hat{\bm A}^\top\hat{\bm B}^{-1}\hat{\bm c}$
+with $\hat{\bm A}=\sum_i\hat{\bm Z}_i^\top\bm C_i$,
+$\hat{\bm B}=\sum_i\hat{\bm Z}_i^\top\hat{\bm Z}_i$, and
+$\hat{\bm c}=\sum_i\hat{\bm Z}_i^\top\bm y_i$. In the second stage the
+factors $\hat{\bm F}_y$ are estimated from the first-stage residuals
+$\hat{\bm u}_i$, projected out by $\bm M_{\hat F_y}$, and
+\begin{equation}
+\tilde{\bm\theta} = (\tilde{\bm A}^\top\tilde{\bm B}^{-1}\tilde{\bm A})^{-1}\tilde{\bm A}^\top\tilde{\bm B}^{-1}\tilde{\bm c},\quad
+\tilde{\bm A} = \sum_i\hat{\bm Z}_i^\top\bm M_{\hat F_y}\bm C_i,\;
+\tilde{\bm B} = \sum_i\hat{\bm Z}_i^\top\bm M_{\hat F_y}\hat{\bm u}_i\hat{\bm u}_i^\top\bm M_{\hat F_y}\hat{\bm Z}_i .
+\label{eq:2siv}
+\end{equation}
+\citet{Cui+Sarafidis+Yamagata:2023} show that $\tilde{\bm\theta}$ is
+consistent, asymptotically normal, and correctly centred as
+$N,T\to\infty$ with $N/T\to c\in(0,\infty)$. The package uses the robust
+variance
+\begin{equation}
+\hat{\bm V} = (\tilde{\bm A}^\top\tilde{\bm B}^{-1}\tilde{\bm A})^{-1}\tilde{\bm A}^\top\tilde{\bm B}^{-1}\hat{\bm\Omega}\tilde{\bm B}^{-1}\tilde{\bm A}(\tilde{\bm A}^\top\tilde{\bm B}^{-1}\tilde{\bm A})^{-1},\qquad
+\hat{\bm\Omega}=\sum_i\hat{\bm Z}_i^\top\tilde{\bm e}_i\tilde{\bm e}_i^\top\hat{\bm Z}_i,
+\label{eq:V}
+\end{equation}
+which allows heteroskedasticity and serial correlation within units. By
+default $\hat{\bm\Omega}$ is evaluated at the first-stage residuals,
+$\hat{\bm\Omega}=\tilde{\bm B}$, as in Equation~(11) of
+\citet{Kripfganz+Sarafidis:2025} and in \code{spxtivdfreg}, so that
+$\hat{\bm V}=(\tilde{\bm A}^\top\tilde{\bm B}^{-1}\tilde{\bm A})^{-1}$; with
+\code{omega="second"} it is evaluated at the second-stage residuals
+$\tilde{\bm e}_i=\bm M_{\hat F_y}(\bm y_i-\bm C_i\tilde{\bm\theta})$. Both choices
+are consistent. The package reports the overidentification statistic
+$J=\bar{\bm g}^\top\hat{\bm\Omega}^{-1}\bar{\bm g}$ with
+$\bar{\bm g}=\sum_i\hat{\bm Z}_i^\top\tilde{\bm e}_i$, asymptotically
+$\chi^2$ with as many degrees of freedom as there are overidentifying
+restrictions. The numbers of factors are chosen by the eigenvalue-ratio
+criterion of \citet{Ahn+Horenstein:2013}, which selects between one and
+\code{factmax} factors; with \code{zero\_factors=True} their mock eigenvalue
+is added so that zero factors can be selected. Unit effects are removed by a
+within transformation of all variables, including the instruments, before
+the factors are extracted.
+
+\subsection{Mean-group IV estimation}
+
+When $\bm\theta_i=\bm\theta+\bm\eta_i$ with $\bm\eta_i$ independent across
+units, \citet{Chen+Cui+Sarafidis:2025} estimate each $\bm\theta_i$ by IV
+using the instruments~\eqref{eq:Z}, where the lagged blocks are
+additionally projected on the contemporaneous factors (``double
+defactoring''), and average:
+$\hat{\bm\theta}_{\mathrm{MG}} = N^{-1}\sum_i\hat{\bm\theta}_i$ with variance
+estimator $\hat{\bm\Sigma}_\eta/N$, where
+$\hat{\bm\Sigma}_\eta=(N-1)^{-1}\sum_i(\hat{\bm\theta}_i-\hat{\bm\theta}_{\mathrm{MG}})(\hat{\bm\theta}_i-\hat{\bm\theta}_{\mathrm{MG}})^\top$
+\citep[see also][]{Pesaran+Smith:1995}.
+
+\subsection{Impacts and their inference} \label{sec:impacts}
+
+For covariate $\ell$ the matrix of long-run partial derivatives is
+\begin{equation}
+\bm S_\ell = \left[a\bm I_N - b\bm W\right]^{-1}(\beta_\ell\bm I_N+\delta_\ell\bm W),\qquad
+a = 1-\textstyle\sum_\tau\rho_\tau,\quad b=\sum_\tau\psi_\tau,
+\label{eq:S}
+\end{equation}
+and the short-run matrix sets $a=1$ and $b=\psi_0$. The average direct
+impact is $\mathrm{tr}(\bm S_\ell)/N$, the average total impact is
+$\bm 1^\top\bm S_\ell\bm 1/N$, and the average indirect impact is their
+difference \citep{LeSage+Pace:2009,Debarsy+Ertur+LeSage:2012}.
+
+\paragraph{Computation.} Let $\bm W=\bm Q\bm R\bm Q^*$ be the complex Schur
+decomposition, with $\bm Q$ unitary and $\bm R$ upper triangular with the
+eigenvalues $\lambda_1,\dots,\lambda_N$ on its diagonal. Because $\bm S_\ell$
+is a rational function of $\bm W$, its trace equals
+$\sum_j(\beta_\ell+\delta_\ell\lambda_j)/(a-b\lambda_j)$ \emph{whether or not
+$\bm W$ is diagonalizable}, and
+$\bm 1^\top\bm S_\ell\bm 1 = (\bm 1^\top\bm Q)(a\bm I-b\bm R)^{-1}\bm Q^*(\beta_\ell\bm 1+\delta_\ell\bm W\bm 1)$
+requires a single triangular solve. When all row sums of $\bm W$ equal $s$,
+as after row standardization, the total impact reduces to
+$(\beta_\ell+\delta_\ell s)/(a-bs)$. After one $O(N^3)$ decomposition, each
+evaluation costs $O(N)$ for direct impacts and at most $O(N^2)$ for total
+impacts, which makes simulation-based inference cheap. The Schur form
+matters in practice: asymmetric $k$-nearest-neighbour matrices, common in
+applied work, are often numerically close to defective, and in our
+experiments the eigenvector matrices of such matrices had condition numbers
+above $10^{11}$, which makes formulas based on $\bm W=\bm V\bm\Lambda\bm V^{-1}$
+unreliable.
+
+\paragraph{Inference.} Impacts are smooth functions $h(\bm\theta)$ of the
+coefficients. Besides the Delta method, \pkg{spdfiv} offers
+Krinsky--Robb simulation: draws $\bm\theta^{(r)}\sim
+N(\tilde{\bm\theta},\hat{\bm V})$ are mapped into $h(\bm\theta^{(r)})$, and
+percentile intervals are reported. Draws that violate the stability
+conditions $\psi_0\omega<1$ and $a-b\omega>0$, with $\omega$ the spectral
+radius of $\bm W$, are discarded and their share is reported. The two
+methods share the same first-order justification; the simulation intervals
+are not forced to be symmetric, which matters when $a-b\omega$ is close to
+zero and $h$ is strongly convex.
+
+\subsection{Diagnostics for heterogeneous slopes} \label{sec:diag}
+
+Under the random-coefficient assumption the estimates $\hat{\bm\theta}_i$
+are, up to estimation error, independent draws from the distribution of
+$\bm\theta_i$, and the MG estimator is the sample mean of that
+distribution. A sample mean is sensitive to a few extreme draws, which may
+reflect data errors, structural breaks, or units with nearly
+uninformative instruments. \pkg{spdfiv} offers three tools.
+
+\begin{enumerate}
+\item \emph{Influence.} Deleting unit $i$ changes the MG estimate by
+  $\hat{\bm\theta}_{\mathrm{MG}}-\hat{\bm\theta}_{\mathrm{MG}(-i)}=(\hat{\bm\theta}_i-\hat{\bm\theta}_{\mathrm{MG}})/(N-1)$.
+  The package reports this change in units of the MG standard error.
+\item \emph{Outlier flags.} The modified $z$-score
+  $0.6745(\hat\theta_{i\ell}-\mathrm{med}_\ell)/\mathrm{MAD}_\ell$ of
+  \citet{Iglewicz+Hoaglin:1993}, with the median and the median absolute
+  deviation computed across units, flags estimates with $|z|>3.5$.
+\item \emph{Robust summaries.} Coefficient-wise trimmed means and medians
+  \citep{Huber+Ronchetti:2009}, with standard errors and percentile
+  intervals from a nonparametric bootstrap that resamples units
+  \citep{Efron+Tibshirani:1993}; resampling units is justified by the
+  independence of $\bm\eta_i$ across units.
+\end{enumerate}
+
+The influence table also reports, for each unit, the condition number of
+$\hat{\bm Z}_i^\top\hat{\bm Z}_i$; very large values mark units whose
+instruments are (nearly) collinear, for example because a covariate does not
+vary over time for that unit, so that their estimates depend on numerical
+tolerances rather than on the data.
+
+Two caveats are stated in the documentation and bear repeating. The
+trimmed mean and the median estimate the centre of the distribution of
+$\bm\theta_i$, which equals the mean $\bm\theta$ only if the distribution is
+symmetric. And the tools are diagnostics: they show which units drive an
+estimate, but whether those units should be excluded is a substantive
+decision for the researcher.
+
+\subsection{Unbalanced panels (experimental)} \label{sec:unbal}
+
+Two departures from balance are supported. With \emph{staggered} entry or
+exit, each unit is observed over one contiguous spell; with \emph{sporadic}
+gaps, interior observations may also be missing. In both cases three
+ingredients change.
+
+\begin{enumerate}
+\item The spatial lag in period $t$ uses the neighbours available in that
+  period. By default the remaining weights in each row are rescaled to keep
+  the original row sum, so that a balanced panel is analysed with exactly
+  $\bm W$; the alternative, dropping absent neighbours without rescaling, is
+  available because, as \citet{Kelejian+Prucha:2010} stress, normalization
+  is a modelling choice.
+\item Factors are extracted from the $T\times T$ matrix whose $(s,t)$
+  element averages over the units observed in both periods, the
+  ``all-purpose'' estimator of \citet{Xiong+Pelger:2023}; for a balanced
+  panel it coincides with the usual matrix.
+\item The projection $\bm M_{\hat F}$ for unit $i$ uses only the rows of
+  $\hat{\bm F}$ for the periods in which unit $i$ is observed.
+\end{enumerate}
+
+The theory of \citet{Cui+Sarafidis+Yamagata:2023} and
+\citet{Chen+Cui+Sarafidis:2025} assumes a balanced panel, and extending it
+is beyond the scope of a software article. The option is therefore labelled
+experimental, triggers a warning, and is evaluated by simulation in
+Section~\ref{sec:mc}. The two cases differ in substance. Staggered entry is
+consistent with a model in which a unit does not exist before it enters, so
+that the period-specific weights are the correct ones. Sporadic gaps in
+units that do exist are a missing-data problem: the spatial lag computed
+from observed neighbours then differs from the true one, which can bias the
+spatial coefficient \citep[cf.][]{Wang+Lee:2013}.
+
+%% ============================================================================
+\section[The spdfiv package]{The \pkg{spdfiv} package} \label{sec:package}
+%% ============================================================================
+
+\subsection{Design}
+
+The package is written in pure \proglang{Python}. All computations are
+vectorized with \pkg{NumPy} or reduce to per-unit linear algebra on small
+matrices, so the cost grows linearly in $N$ apart from the eigen
+decompositions of $T\times T$ matrices for the factors and one Schur
+decomposition of $\bm W$ for impacts. The main entry point is
+\fct{fit}; it returns a results object with methods for impacts and
+heterogeneity diagnostics. Table~\ref{tab:options} maps its arguments to the
+options of \code{spxtivdfreg}, to ease migration and cross-checks.
+
+\begin{table}[t!]
+\centering\small
+\begin{tabular}{lll}
+\toprule
+\pkg{spdfiv} argument & \code{spxtivdfreg} option & Meaning \\
+\midrule
+\code{W=} (labelled) & \code{spmatrix()} & spatial weights matrix \\
+\code{splag=True} & \code{splag} & spatial lag of $y$ \\
+\code{tlags=}$p$ & \code{tlags(}$p$\code{)} & time lags of $y$ \\
+\code{sptlags=}$q$ & \code{sptlags(}$q$\code{)} & spatial time lags of $y$ \\
+\code{spx=[...]} & \code{spindepvars()} & spatial lags of covariates \\
+\code{iv=[...]} & \code{iv(}\textit{varlist}\code{)} & exogenous instrumenting variables \\
+\code{iv\_lags=}$L$ & \code{iv(..., lags(}$L$\code{))} & lags of instruments \\
+\code{iv\_splags=True} & \code{iv(..., splags)} & spatial lags of instruments \\
+\code{factmax=}$k$ & \code{factmax(}$k$\code{)} & maximum number of factors \\
+\code{eigratio=False} & \code{noeigratio} & use exactly \code{factmax} factors \\
+\code{zero\_factors=True} & --- & allow zero factors (mock eigenvalue) \\
+\code{common\_rank=True} & (always) & same number of factors for all lag blocks \\
+\code{omega="first"} & (always) & $\hat{\bm\Omega}$ from first-stage residuals \\
+\code{std=True} & \code{std} & standardize within periods before factor extraction \\
+\code{absorb=True} & \code{absorb(}\textit{id}\code{)} & unit fixed effects \\
+\code{estimator="fstage"} & \code{fstage} & first-stage IV \\
+\code{estimator="mg"} & \code{mg} & mean-group IV \\
+\code{doubledefact=} & \code{doubledefact} & double defactoring of lagged instruments \\
+\code{unbalanced=} & --- & staggered or sporadic missingness (experimental) \\
+\code{renormalize=} & --- & row rescaling with absent neighbours \\
+\bottomrule
+\end{tabular}
+\caption{Arguments of \fct{fit} and corresponding options of the
+\proglang{Stata} command \code{spxtivdfreg}.}
+\label{tab:options}
+\end{table}
+
+\subsection{Results}
+
+{\sloppy The object returned by \fct{fit} stores the coefficients (\code{params}),
+their variance matrix (\code{cov}), standard errors (\code{bse}), $z$
+statistics (\code{zvalues}), $p$ values (\code{pvalues}), confidence
+intervals (\code{conf\_int()}), the numbers of factors
+(\code{factors\_x}, one per instrument lag block, and \code{factors\_u}),
+the $J$ statistic with its degrees of freedom and $p$ value, and the
+decomposition of the error variance into factor and idiosyncratic parts.
+For the MG estimator, \code{unit\_params} and \code{unit\_se} hold the
+unit-specific estimates. The methods \fct{impacts}, \fct{mg\_influence},
+and \fct{mg\_robust} implement Sections~\ref{sec:impacts}
+and~\ref{sec:diag}, and \fct{summary} prints a coefficient table.\par}
+
+\subsection{Alignment of the weights matrix}
+
+The weights matrix is passed as a \pkg{pandas} \code{DataFrame} whose
+index and columns are unit identifiers, or as an array together with the
+identifiers (\code{W\_ids}). The package checks that the labels on both
+axes agree, that they coincide with the units in the data, that there are
+no missing values, and that the diagonal is zero; it then reorders the
+matrix to the internal ordering of units. An unlabelled array is rejected
+unless \code{assume\_ordered=True}. The helper \fct{read\_weights} reads a
+labelled matrix from a CSV or Excel file.
+
+\subsection{Validation}
+
+The test suite, run with \code{python -m unittest}, contains a literal
+implementation of equations (5)--(12) of \citet{Kripfganz+Sarafidis:2025},
+for both choices of $\hat{\bm\Omega}$, written with explicit $T\times T$
+projection matrices and independent of the package code. The package reproduces its first- and second-stage estimates
+to an absolute tolerance of $10^{-10}$, its variance matrix to a relative
+tolerance of $10^{-8}$, and its $J$ statistic to eight decimal places. With
+no factors and no lags the first-stage estimator coincides with two-stage
+least squares, which is also tested. Further tests check that permuting a
+labelled weights matrix leaves the estimates unchanged, that misaligned or
+invalid matrices are rejected, that the Schur-based impacts agree with dense
+matrix inversion for both row-standardized and spectrally normalized
+matrices, that the balanced-panel estimates are unchanged by the unbalanced
+option, and that the influence statistic equals the leave-one-out change in
+the MG estimate.
+
+%% ============================================================================
+\section{Illustration} \label{sec:illustration}
+%% ============================================================================
+
+This section uses simulated data so that the true parameters are known and
+the output can be reproduced exactly. The data-generating process is
+model~\eqref{eq:model} with $\psi_0=0.3$, $\rho_1=0.4$,
+$\bm\beta=(1,0.5)^\top$, two AR(1) factors that enter both the error and the
+covariates, loadings of the covariates correlated with those of the error,
+heteroskedastic errors, unit effects, and a row-standardized six-nearest-neighbour
+weights matrix; it is available as \fct{simulate\_panel}.
+
+\begin{CodeInput}
+>>> import pandas as pd
+>>> import spdfiv as sd
+>>> data, W, truth = sd.simulate_panel(N=300, T=40, psi=0.3, rho=0.4,
+...                                    beta=(1.0, 0.5), seed=2025)
+>>> print(data.head(3)); print(W.shape, W.index[:5].tolist())
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_1.txt}
+
+The data are in long format; \code{W} is a labelled \code{DataFrame}. The
+2SIV estimator with a spatial lag, one time lag, and instruments formed from
+the defactored covariates, their first lags, and the spatial lags of both,
+is obtained with
+
+\begin{CodeInput}
+>>> res = sd.fit(data, y="y", x=["x1", "x2"], unit="id", time="time", W=W,
+...              splag=True, tlags=1, iv_lags=1, iv_splags=True)
+>>> print(res.summary())
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_2.txt}
+
+The eigenvalue-ratio criterion selects the true number of factors in each
+instrument block and in the residuals, the estimates are close to the true
+values, and the $J$ test does not reject. Ignoring the factors
+(\code{factmax=0}) yields IV estimates based on raw covariates:
+
+\begin{CodeInput}
+>>> res0 = sd.fit(data, "y", ["x1", "x2"], "id", "time", W, tlags=1,
+...               iv_lags=1, factmax=0)
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_3.txt}
+
+The slope estimates are biased upwards by 0.34 to 0.38 because the
+covariates are correlated with the omitted factor component, and the $J$
+test rejects at the 5\% level.
+
+\paragraph{Impacts.} Long-run impacts with simulation-based inference are
+requested with
+
+\begin{CodeInput}
+>>> lr_delta = res.impacts("lr", method="delta")
+>>> lr_sim = res.impacts("lr", method="simulation", draws=5000, seed=1)
+>>> print(lr_sim.round(4))
+>>> print(pd.concat({"delta": lr_delta[["se", "lower", "upper"]],
+...                  "simulation": lr_sim[["se", "lower", "upper"]]},
+...                 axis=1).loc["total"].round(4))
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_4.txt}
+
+The second panel compares the two methods for the total impacts. The
+simulation intervals are shifted to the right of the symmetric Delta
+intervals, reflecting the convexity of $\beta/(1-\rho-\psi)$ in the
+persistence parameters. The true long-run total impacts are $1/0.3=3.333$
+for \code{x1} and $1.667$ for \code{x2}; both intervals cover them.
+
+\paragraph{Safeguards.} Passing the weights as an unlabelled array is
+refused, and reversing the order of a labelled matrix leaves the estimates
+unchanged:
+
+\begin{CodeInput}
+>>> sd.fit(data, "y", ["x1", "x2"], "id", "time", W.to_numpy())
+>>> perm = W.index[::-1]
+>>> res_p = sd.fit(data, "y", ["x1", "x2"], "id", "time", W.loc[perm, perm],
+...                tlags=1, iv_lags=1)
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_5.txt}
+
+\paragraph{Heterogeneous slopes.} The next data set has heterogeneous
+slopes, centred on the same values, and 3\% of units (nine units) whose
+covariate slopes are shifted by $+3$, mimicking units with data problems or
+a different structure.
+
+\begin{CodeInput}
+>>> dh, Wh, th = sd.simulate_panel(N=300, T=40, het=0.2, outlier_share=0.03,
+...                                seed=7)
+>>> mg = sd.fit(dh, "y", ["x1", "x2"], "id", "time", Wh, tlags=1,
+...             iv_lags=1, estimator="mg")
+>>> print(mg.summary())
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_6.txt}
+
+The MG estimates of the covariate slopes, 1.072 and 0.598, lie well above
+the centre of the regular units, 1 and 0.5. The influence diagnostics show
+why:
+
+\begin{CodeInput}
+>>> infl = sd.mg_influence(mg, threshold=3.5)
+>>> cols = ["unit", "parameter", "theta_i", "mod_z", "dfmg", "flag"]
+>>> print(infl.sort_values("dfmg", key=abs, ascending=False)[cols].head(6))
+>>> flagged = sd.flagged_units(infl, parameters=["x1", "x2"])
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_7.txt}
+
+Each of the most influential units moves an MG coefficient by about a third
+of its standard error. Flagging on the covariate slopes recovers all nine
+aberrant units and one regular unit. The two units flagged for the spatial
+and time lag coefficients have imprecise unit-level estimates; with $T=40$
+per-unit IV estimates of these coefficients are noisy, which is why
+flagging is best restricted to the parameters of interest. Robust summaries
+and the MG estimate without the flagged units are
+
+\begin{CodeInput}
+>>> print(sd.mg_robust(mg, method="trimmed", trim=0.1, bootstrap=999, seed=1))
+>>> print(sd.mg_robust(mg, method="mean", exclude=flagged, bootstrap=999,
+...                    seed=1))
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_8.txt}
+
+Both the trimmed mean and the MG estimate without the flagged units are close
+to the centre of the regular units, with standard errors about half those of
+the full MG estimate.
+
+\paragraph{Staggered entry.} Finally, 30\% of the units enter the panel
+at random dates during the first half of the sample.
+
+\begin{CodeInput}
+>>> du, Wu, tu = sd.simulate_panel(N=300, T=40, entry_share=0.3, seed=11)
+>>> ru = sd.fit(du, "y", ["x1", "x2"], "id", "time", Wu, tlags=1,
+...             iv_lags=1, unbalanced="staggered")
+\end{CodeInput}
+\VerbatimInput[fontsize=\small]{../replication/results/illustration_9.txt}
+
+The first lines show how many units start in each of the first periods. The
+estimator uses all 10{,}800 available observations and issues a warning that
+the option is experimental.
+
+%% ============================================================================
+\section{Monte Carlo evidence} \label{sec:mc}
+%% ============================================================================
+
+All experiments use the data-generating process of
+Section~\ref{sec:illustration}, 1{,}000 replications, a new weights matrix
+and new loadings in each replication, and the specification with one time
+lag, one instrument lag, and spatial lags of the instruments (eight
+instruments, four parameters). The code is in
+\code{replication/monte\_carlo.py}.
+
+\input{mc_text.tex}
+
+%% ============================================================================
+\section{Empirical application: credit risk in US banks} \label{sec:application}
+%% ============================================================================
+
+\input{application_text.tex}
+
+%% ============================================================================
+\section{Computing time} \label{sec:timing}
+%% ============================================================================
+
+Table~\ref{tab:timing} reports the best of three wall-clock times, in
+seconds, for the 2SIV and MGIV estimators and for long-run impacts with
+1{,}000 simulation draws, on the platform described in the computational
+details. Estimation with a thousand units and fifty periods takes less than half a second; the impact computation is dominated by the Schur decomposition of $\bm W$, which is computed once.
+
+\begin{table}[t!]
+\centering\small
+\input{tables/timing.tex}
+\caption{Computing time in seconds (best of three runs).}
+\label{tab:timing}
+\end{table}
+
+%% ============================================================================
+\section{Summary and discussion} \label{sec:summary}
+%% ============================================================================
+
+\pkg{spdfiv} makes the defactored IV approach to spatial dynamic panels
+with interactive effects available as open-source software. It reproduces
+the defining equations of the 2SIV estimator to machine precision. On the data of
+\citet{Kripfganz+Sarafidis:2025} it reproduces the published 2SIV
+and mean-group results of \code{spxtivdfreg} in every printed digit, and
+the comparison made explicit five implementation details of that command. The package adds safeguards and
+diagnostics that matter in applied work: label-based
+alignment of the weights matrix, exact and fast computation of impacts with
+a choice between Delta-method and simulation inference, tools that show
+which units drive mean-group estimates, and an experimental treatment of
+unbalanced panels.
+
+Several limitations remain. The asymptotic theory for unbalanced panels and
+for the robust MG summaries has not been developed; the corresponding
+options are diagnostics and are labelled as such. The package does not
+implement a test of remaining cross-sectional dependence, because the
+standard CD test is invalid when factors have been estimated from the same
+data \citep{Juodis+Reese:2022}. Planned extensions include an interface for
+\pkg{PySAL} weights objects, a test of slope homogeneity, and an \proglang{R}
+port.
+
+%% ============================================================================
+\section*{Computational details}
+%% ============================================================================
+
+The results in this paper were obtained using \proglang{Python}~3.13.17
+with \pkg{spdfiv}~0.1.0, \pkg{NumPy}~2.5.3, \pkg{SciPy}~1.18.1, and
+\pkg{pandas}~3.0.5, on Linux with two CPU cores. The package and the
+replication materials are available from \url{https://github.com/abdulameert-boop/spdfiv}.
+
+\section*{Acknowledgments}
+
+\todo{Acknowledgments.} Parts of the software and of the manuscript were
+drafted with the assistance of an AI system (Claude, Anthropic); the authors
+have checked and tested, and take full responsibility for all code and text.
+\todo{Adapt this disclosure to the journal's current policy on AI tools.}
+
+\bibliography{refs}
+
+\end{document}

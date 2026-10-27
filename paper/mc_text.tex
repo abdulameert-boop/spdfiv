@@ -1,0 +1,68 @@
+\subsection{Homogeneous slopes}
+
+Table~\ref{tab:mc1} compares the 2SIV estimator with the first-stage IV
+estimator and with IV estimation that ignores the factors
+(\code{factmax=0}), for $(N,T)\in\{(50,50),(100,100),(200,200)\}$. Size
+refers to two-sided $t$ tests at the 5\% level, and the last column reports
+the rejection frequency of the $J$ test at the 5\% level.
+
+\begin{table}[t!]
+\centering\scriptsize
+\input{tables/mc1.tex}
+\caption{Homogeneous slopes: bias, root mean squared error, and size (\%) of
+5\% $t$ tests for $\psi_0=0.3$, $\rho_1=0.4$, $\beta_1=1$, and rejection
+frequency (\%) of the $J$ test. 1{,}000 replications.}
+\label{tab:mc1}
+\end{table}
+
+The 2SIV estimator is practically unbiased in all designs, and its RMSE
+halves as $N$ and $T$ double. Its $t$ tests over-reject somewhat in the
+smallest design (sizes between 9.1\% and 11.1\%), but their size is between
+4.5\% and 5.8\% when $N=T=200$, and the $J$ test has size between 3.5\% and
+4.9\%. The eigenvalue-ratio criterion selects the true number of factors in
+the instruments in at least 99.8\% of the replications and in the residuals
+in at least 97.2\%. The first-stage estimator is consistent but less
+precise; its $J$ test rejects in 15\%--18\% of the replications because it
+ignores the factors in the error, which illustrates why the second stage is
+the default. Ignoring the factors produces a bias of about 0.36 in
+$\beta_1$ that does not vanish as the sample grows, so that $t$ tests on
+$\beta_1$ always reject. Reassuringly, the $J$ test detects this
+misspecification with a frequency that rises from 21.5\% to 91.1\%.
+
+\subsection{Inference on long-run impacts}
+
+To make the long-run multipliers strongly non-linear, Table~\ref{tab:mc2}
+uses $\psi_0=0.35$ and $\rho_1=0.5$, so that $1-\rho_1-\psi_0=0.15$ and the
+total long-run impact of $x_1$ is $6.67$. It reports the coverage of
+nominal 95\% intervals, the frequencies with which the true value lies below
+or above the interval, and the median interval width. In the smallest
+design, the point estimates violated the stability condition in 22 of the
+1{,}000 replications, for which impacts are undefined; these replications are
+excluded.
+
+\begin{table}[t!]
+\centering\scriptsize
+\input{tables/mc2.tex}
+\caption{Long-run impacts of $x_1$ with $\psi_0=0.35$, $\rho_1=0.5$:
+coverage (\%) of nominal 95\% intervals, frequency (\%) with which the true
+value lies below the lower or above the upper limit, and median width.}
+\label{tab:mc2}
+\end{table}
+
+The results give a nuanced picture that users should know about. The Delta
+intervals are symmetric while the sampling distribution of the impacts is
+skewed to the right; as a result almost all of their non-coverage is on one
+side: the true value lies above the upper limit in 9\%--11\% of the
+replications for indirect and total impacts when $N,T\le 50$, and below the
+lower limit in less than 1\%. Simulation intervals spread the errors almost
+evenly between the two tails. Their overall coverage, however, is not
+better in small samples (86.9\%--88.6\% compared with 88.7\%--90.8\% for the Delta
+method), because both methods inherit the same first-order approximation of
+the variance. In the largest design both methods are close to nominal
+coverage, simulation slightly more so (94.2\% compared with 93.5\% for total
+impacts). The practical recommendation is therefore to report simulation
+intervals when the process is persistent, because they convey the
+asymmetry of the uncertainty, while recognizing that neither method is
+exact in small samples.
+
+\input{mc_text_b.tex}

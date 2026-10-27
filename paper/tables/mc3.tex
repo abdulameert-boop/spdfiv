@@ -1,0 +1,19 @@
+\begin{tabular}{llrrrrrrrrr}
+\toprule
+ & & \multicolumn{3}{c}{No aberrant units} & \multicolumn{3}{c}{5\% aberrant} & \multicolumn{3}{c}{10\% aberrant} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+$(N,T)$ & Estimator & Bias & RMSE & Cover & Bias & RMSE & Cover & Bias & RMSE & Cover \\
+\midrule
+$(100,50)$ & MG & 0.001 & 0.031 & 94.5 & 0.152 & 0.155 & 36.3 & 0.300 & 0.302 & 0.0 \\
+ & Trimmed MG (10\%) & 0.002 & 0.031 & 95.1 & 0.031 & 0.044 & 87.8 & 0.065 & 0.073 & 63.7 \\
+ & Median & 0.001 & 0.041 & 95.3 & 0.026 & 0.050 & 91.7 & 0.049 & 0.066 & 82.0 \\
+ & MG excl.\ flagged & 0.002 & 0.031 & 94.3 & 0.003 & 0.032 & 95.2 & 0.000 & 0.034 & 93.1 \\
+ & \emph{Flagging: TPR / FPR} & \multicolumn{3}{c}{-- / 0.3} & \multicolumn{3}{c}{100.0 / 0.2} & \multicolumn{3}{c}{100.0 / 0.1} \\
+\addlinespace
+$(200,100)$ & MG & 0.000 & 0.019 & 94.2 & 0.150 & 0.151 & 0.0 & 0.300 & 0.300 & 0.0 \\
+ & Trimmed MG (10\%) & 0.000 & 0.021 & 94.3 & 0.023 & 0.031 & 81.6 & 0.054 & 0.058 & 40.4 \\
+ & Median & $-$0.001 & 0.029 & 94.8 & 0.020 & 0.035 & 89.9 & 0.044 & 0.054 & 70.4 \\
+ & MG excl.\ flagged & 0.000 & 0.019 & 94.2 & 0.000 & 0.019 & 94.0 & 0.000 & 0.020 & 94.4 \\
+ & \emph{Flagging: TPR / FPR} & \multicolumn{3}{c}{-- / 0.0} & \multicolumn{3}{c}{100.0 / 0.0} & \multicolumn{3}{c}{100.0 / 0.0} \\
+\bottomrule
+\end{tabular}

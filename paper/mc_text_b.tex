@@ -1,0 +1,77 @@
+\subsection{Mean-group estimation with aberrant units}
+
+The data for Table~\ref{tab:mc3} have heterogeneous slopes, with
+$\psi_{0i}$ and $\rho_{1i}$ uniform on $\pm0.1$ around their means and
+$\beta_{\ell i}$ uniform on $\pm0.4$ around $\beta_\ell$. A share of 0\%,
+5\%, or 10\% of the units is \emph{aberrant}: both of their covariate slopes
+are shifted by $+3$. The target is the mean of the regular units,
+$\beta_1=1$. The table reports the MG estimator, the coefficient-wise 10\%
+trimmed mean and the median of the unit-specific estimates (with 499
+bootstrap replications over units), and the MG estimator after removing the
+units flagged on $\beta_1$ or $\beta_2$, together with the true and false
+positive rates of the flags.
+
+\begin{table}[t!]
+\centering\scriptsize
+{\setlength{\tabcolsep}{4pt}\input{tables/mc3.tex}}
+\caption{Heterogeneous slopes with aberrant units (slopes shifted by $+3$):
+bias, RMSE, and coverage (\%) of nominal 95\% intervals for the centre of
+the regular units, $\beta_1=1$, and true / false positive rates (\%) of the
+outlier flags. 1{,}000 replications.}
+\label{tab:mc3}
+\end{table}
+
+Without aberrant units all four estimators are centred on the truth and
+have coverage between 94.2\% and 95.3\%; the median pays an efficiency price
+(RMSE 0.041 against 0.031 for MG when $N=100$), and the flags mark at most
+0.3\% of the regular units. With 5\% aberrant units the MG estimator is
+biased by 0.15, and its coverage falls to 36\% for $N=100$ and to zero for
+$N=200$: a larger sample only makes the wrong answer more precise. The
+trimmed mean and the median remove most of the bias but not all of it,
+because the symmetric trimming also cuts regular units from the lower tail,
+so their coverage remains below nominal (82\%--92\%) and deteriorates when
+10\% of the units are aberrant. Excluding the flagged units restores both
+the centre and the coverage (93\%--95\%) in all designs.
+
+With a shift of $+3$ the aberrant units are far outside the distribution of
+the regular slopes, which makes detection easy: every aberrant unit is
+flagged in every design. \input{mc_text_c.tex}
+
+\subsection{Unbalanced panels}
+
+Table~\ref{tab:mc4} considers $N=T=100$ with two kinds of missing data.
+With \emph{staggered entry}, 30\% of the units enter at a random date
+during the first half of the sample and, consistently with
+Section~\ref{sec:unbal}, do not interact with other units before they
+enter. The experimental unbalanced estimator is compared with the two
+balanced alternatives a user of existing software would have: dropping the
+late units (and re-standardizing the weights matrix of the remaining units)
+or keeping all units but only the periods in which all of them are
+observed. With \emph{sporadic} gaps, 2\% of the unit-period cells are
+missing at random; the only balanced alternative is to keep the units
+without gaps.
+
+\begin{table}[t!]
+\centering\scriptsize
+{\setlength{\tabcolsep}{4pt}\input{tables/mc4.tex}}
+\caption{Unbalanced panels, $N=T=100$: average number of observations used,
+bias, RMSE, and size (\%) of 5\% $t$ tests. 1{,}000 replications.}
+\label{tab:mc4}
+\end{table}
+
+Under staggered entry the unbalanced estimator is centred on the true
+values, and its sizes (6.6\%--8.6\%) are close to those of the 2SIV
+estimator in balanced panels of the same dimensions in
+Table~\ref{tab:mc1}. Dropping the late units is not a harmless loss of
+information: it removes nodes from the network and biases the spatial
+coefficient by $-0.07$, so that $t$ tests on $\psi_0$ reject in 98\% of the
+replications. Restricting the sample to the common period is valid but
+discards almost half of the observations, which raises the RMSE of $\psi_0$
+from 0.015 to 0.023. With 2\% sporadic gaps the unbalanced estimator is again
+nearly unbiased (bias of $\psi_0$ equal to $-0.003$), whereas keeping only
+the units without gaps leaves about 14\% of the observations and severely
+biases the spatial coefficient. These results support the usefulness of the
+option in designs like these. They do not replace a formal theory, and the
+sporadic case in particular could behave worse when missingness is more
+frequent or related to the outcome; the option therefore remains labelled
+experimental.

@@ -1,0 +1,6 @@
+        2SIV  no factors
+W.y   0.3022      0.3304
+L1.y  0.3905      0.3839
+x1    1.0012      1.3825
+x2    0.5061      0.8405
+J p-values: 2SIV 0.564, no factors 0.0231

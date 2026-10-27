@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you use spdfiv, please cite the accompanying article and the methods it implements."
+title: "spdfiv: Defactored instrumental variables estimation and heterogeneity diagnostics for spatial dynamic panels with interactive effects"
+version: 0.1.0
+license: GPL-3.0-or-later
+repository-code: "https://github.com/abdulameert-boop/spdfiv"
+authors:
+  - family-names: "Bandar"
+    given-names: "Abdul Amir Taima"
+    affiliation: "University of Kerbala"
+    orcid: "https://orcid.org/0009-0007-1118-1993"
+  - family-names: "Abd Ali"
+    given-names: "Ahmed Turki"
+    affiliation: "University of Kerbala"
+    orcid: "https://orcid.org/0009-0007-5402-8948"
+references:
+  - type: article
+    authors:
+      - family-names: Cui
+        given-names: Guowei
+      - family-names: Sarafidis
+        given-names: Vasilis
+      - family-names: Yamagata
+        given-names: Takashi
+    title: "IV estimation of spatial dynamic panels with interactive effects: large sample theory and an application on bank attitude towards risk"
+    journal: "The Econometrics Journal"
+    volume: 26
+    issue: 2
+    start: 124
+    end: 146
+    year: 2023
+    doi: 10.1093/ectj/utac026
+  - type: article
+    authors:
+      - family-names: Kripfganz
+        given-names: Sebastian
+      - family-names: Sarafidis
+        given-names: Vasilis
+    title: "Estimating spatial dynamic panel data models with unobserved common factors in Stata"
+    journal: "Journal of Statistical Software"
+    volume: 113
+    issue: 6
+    year: 2025
+    doi: 10.18637/jss.v113.i06

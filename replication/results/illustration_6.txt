@@ -1,0 +1,13 @@
+Defactored instrumental variables estimation
+Number of obs               =      11700   Number of units     =      300
+Number of instruments       =          8   Obs per unit (min/avg/max)= 39/39.0/39
+Factors in instruments      =        2/2   Factors in u        =        -
+Mean-group estimator (model with heterogeneous slope coefficients)
+------------------------------------------------------------------------------
+                     Coef.   Std. err.        z   P>|z|     [95% conf. interval]
+------------------------------------------------------------------------------
+           W.y    0.281662    0.018684    15.08   0.000    0.245043    0.318281
+          L1.y    0.389689    0.009815    39.70   0.000    0.370452    0.408925
+            x1    1.071706    0.036534    29.33   0.000    1.000101    1.143311
+            x2    0.597771    0.034591    17.28   0.000    0.529974    0.665568
+------------------------------------------------------------------------------

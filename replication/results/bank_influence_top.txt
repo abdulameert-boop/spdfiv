@@ -1,0 +1,9 @@
+      unit parameter    theta_i     mod_z      dfmg  flag          cond  ill_conditioned
+1896   147    BUFFER   3.618152  7.578360  0.272352  True  1.719195e+06            False
+1425    26      SIZE  32.324149  9.142295  0.256628  True  1.661778e+06            False
+1511   112      SIZE  30.991418  8.755708  0.245348  True  3.677914e+06            False
+1695   296      SIZE  30.809548  8.702953  0.243808  True  2.544199e+07            False
+2025   276    BUFFER   2.725678  5.816010  0.211502  True  1.010589e+07            False
+1948   199    BUFFER  -3.367633 -6.216333 -0.203947  True  1.920871e+07            False
+1478    79      SIZE  25.680417  7.215141  0.200396  True  8.608653e+05            False
+1765    16    BUFFER  -3.206755 -5.898650 -0.192979  True  1.231959e+07            False

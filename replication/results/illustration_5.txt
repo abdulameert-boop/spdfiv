@@ -1,0 +1,4 @@
+WeightsAlignmentError: An unlabelled weights array was supplied. Pass a
+labelled DataFrame, or the unit labels via `W_ids`, or set
+`assume_ordered=True` to accept positional matching.
+max |difference|: 1.1102230246251565e-15

@@ -1,0 +1,15 @@
+To see how the tools behave when detection is hard, we repeated the
+$(N,T)=(200,100)$ design with a shift of $+1$, only 2.5 times the
+half-width of the distribution of regular slopes (1{,}000 replications;
+\code{monte\_carlo.py}, experiment \code{3b}). The flags then identify
+55.5\% of the aberrant units when 5\% are aberrant and 39.6\% when 10\% are,
+with no false positives. Excluding the flagged units still halves the bias
+of the MG estimator with 5\% aberrant units (0.020 against 0.050) but no
+longer restores coverage (84.6\%), and with 10\% aberrant units it is no
+better than the trimmed mean (bias 0.056 and 0.053). The median has the
+smallest bias in both cases (0.022 and 0.044). The diagnostics are
+therefore most useful when aberrant units are clearly separated, which is
+the case they are designed to reveal; when contamination blends into the
+regular distribution, robust summaries and exclusion give similar,
+partially corrected answers, and the gap between them and the MG estimate
+is itself the informative signal.

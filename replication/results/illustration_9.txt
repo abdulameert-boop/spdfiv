@@ -1,0 +1,27 @@
+time
+1    210
+2      4
+3      3
+4      5
+Name: count, dtype: int64
+UserWarning: Estimation with an unbalanced panel is experimental: the asymptotic theory of Cui et al. (2023) and Chen et al. (2025) assumes a balanced panel.
+Defactored instrumental variables estimation
+Number of obs               =      10800   Number of units     =      300
+Number of instruments       =          8   Obs per unit (min/avg/max)= 20/36.0/39
+Factors in instruments      =        2/2   Factors in u        =        2
+Unbalanced panel (staggered); experimental.
+Second-stage estimator (model with homogeneous slope coefficients)
+------------------------------------------------------------------------------
+                     Coef.   Std. err.        z   P>|z|     [95% conf. interval]
+------------------------------------------------------------------------------
+           W.y    0.316191    0.012070    26.20   0.000    0.292533    0.339848
+          L1.y    0.406260    0.008640    47.02   0.000    0.389327    0.423194
+            x1    0.994829    0.011469    86.74   0.000    0.972349    1.017308
+            x2    0.517562    0.010480    49.39   0.000    0.497022    0.538102
+------------------------------------------------------------------------------
+       sigma_f    1.245863  (std. dev. of factor error component)
+       sigma_e    0.961159  (std. dev. of idiosyncratic error component)
+           rho    0.626888  (fraction of variance due to factors)
+------------------------------------------------------------------------------
+Hansen test of the overidentifying restrictions  chi2(4) =    4.4186
+H0: overidentifying restrictions are valid        Prob > chi2 =    0.3523
